@@ -19,12 +19,10 @@ COLORS = mpl.colormaps['tab20'].colors
 @st.cache_data(show_spinner=False)
 def load_mayall_data() -> pd.DataFrame:
     """Load Mayall telescope reflectivity data and index by Date."""
-    url = (
-        "https://docs.google.com/spreadsheets/d/e/"
-        "2PACX-1vSWF3pE1qBNcatq1Cm-H2z6mAGBPA-EbyUhujoOHXUU9-"
-        "BfGYkmzP0YaFslu0bm2efn6AB9fNwUEUHj/pub?gid=0&single=true&output=csv"
-    )
-    df = pd.read_csv(url)
+    spreadsheet_key = '1NVfhMm5GVn2o8nRfpzRPlQ1rBH_3WFEV2wFevAXYiF8'
+
+    url=f'https://docs.google.com/spreadsheet/ccc?key={spreadsheet_key}&output=csv'
+    df = pd.read_csv(url,skiprows=[1,2])
     wavelengths = df.columns[9:]
     df.index = pd.to_datetime(df["Date"])
     df.drop(columns="Date", inplace=True)
@@ -47,9 +45,6 @@ STANDARD_SCI.columns = WAVELENGTHS
 # UI option lists
 wash_types = sorted(mayall_data["Wash Type"].dropna().unique())
 wash_types.append("All")
-coating_dates = sorted(mayall_data["Coating Date"].dropna().unique())
-coating_dates.append("All")
-
 
 # -------------------------#
 # -----  HELPERS ----------#
@@ -73,10 +68,11 @@ def get_dates_by_filter(
         Sorted list of date strings, newest first.
     """
     if value == "All":
-        dates = mayall_data.index
+        dates_ = mayall_data.index
     else:
-        dates = mayall_data.loc[mayall_data[column] == value].index
-    return sorted(dates.strftime("%Y-%m-%d"), reverse=True)
+        dates_ = mayall_data.loc[mayall_data[column] == value].index
+    dates = [pd.to_datetime(date).strftime("%Y-%m-%d") for date in np.unique(dates_)]
+    return sorted(dates, reverse=True)
 
 
 def reduce_data(
@@ -196,9 +192,7 @@ st.header("Mayall Daily Reflectivity & Scatter Plot")
 
 st.markdown(
     """
-    ## Daily Plot
-
-    View the **reflectivity and scattering measurements** for a single observation date.
+    View the **reflectivity and scattering measurements** for a single measurement date.
 
     * Choose a **wash type** to filter the dataset to specific days.
     * Select the specific **date of measurement** you want to inspect.
