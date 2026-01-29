@@ -128,6 +128,7 @@ def change_plot(
     linreg: bool = False,
     sc: str = "SCI",
     outliers_input: str = "",
+    coating_all: bool = False
 ) -> None:
     """
     Plot mean reflectivity in three wavelength bands (Blue/Green/Red) across time.
@@ -201,6 +202,12 @@ def change_plot(
 
     if linreg:
         ax.legend()
+    if coating_all:
+        coating_dates = [pd.to_datetime(coating_date) for coating_date in coatings[:-1]]
+        coating_dates = np.sort(coating_dates)
+        for cd in coating_dates:
+            ax.axvline(cd, color='k',ls = '--')
+        ax.set_xlim(x[0],x[-1])
     ax.set_title(f"{sc} Change Over Time")
     ax.set_ylabel(f"Mean {sc} (%)")
     ax.set_xlabel("Date")
@@ -267,12 +274,17 @@ with col2:
 linreg_choice = st.checkbox("Show Linear Regression Fits")
 
 if st.button("Generate Change Plot"):
+    if coating_choice == 'All':
+        coating_all = True
+    else:
+        coating_all = False
     data_ = change_plot(
         start_date_choice,
         end_date_choice,
         sc = sc_choice,
         linreg=linreg_choice,
         outliers_input=outliers_choice,
+        coating_all=coating_all
     )
     if not data_.empty:
         time = Time.now()

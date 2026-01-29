@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 from matplotlib.gridspec import GridSpec
 from sklearn.linear_model import LinearRegression
+from datetime import datetime
 import matplotlib as mpl
 
 # --- Styling ---
@@ -13,8 +14,8 @@ colors = cm.get_cmap('tab20').colors
 
 # --- Load data ---
 mayall_data = pd.read_csv(
-    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSWF3pE1qBNcatq1Cm-H2z6mAGBPA-EbyUhujoOHXUU9-BfGYkmzP0YaFslu0bm2efn6AB9fNwUEUHj/pub?gid=0&single=true&output=csv'
-)
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vSWF3pE1qBNcatq1Cm-H2z6mAGBPA-EbyUhujoOHXUU9-BfGYkmzP0YaFslu0bm2efn6AB9fNwUEUHj/pub?gid=0&single=true&output=csv',
+    skiprows=[1,2])
 wavelengths = mayall_data.columns[9:]
 mayall_data.index = pd.to_datetime(mayall_data['Date'])
 mayall_data.drop('Date', axis=1, inplace=True)
@@ -192,3 +193,12 @@ outliers_choice = st.text_input("Outliers (comma-separated YYYY-MM-DD)", "2024-1
 if st.button("Generate Change Plot"):
     change_plot(start_date_choice, end_date_choice, linreg=linreg_choice, outliers_input=outliers_choice)
 
+st.subheader("Upload Data")
+new_file = st.file_uploader("Upload a csv")
+today = datetime.now()
+new_date = st.text_input("Data Taken Date:", today.strftime("%Y-%m-%d"))
+telescope = st.text_input("Telescope:","Mayall")
+mirror = st.text_input("Mirror:","M1")
+zone = st.text_input("Zone:",1)
+coating_date = coatings[-1]
+wash_type = st.selectbox("Wash Type:",wash_types)

@@ -181,21 +181,23 @@ def load_data(csv_file, date,telescope,mirror,zone,coating_date,wash_type,cals,m
     return new_df
 
 def append_data(df):
-
+    os.write('HERE')
     x = pd.concat([headers,mayall_data, new_df])
     x['Date'] = pd.to_datetime(x.index).strftime('%Y-%m-%d')
     x = x.reset_index(drop=True)
+    os.write(x)
     # Authenticate (you’ll need a service account JSON key)
     creds = Credentials.from_service_account_file("service_account.json", scopes=[
         "https://www.googleapis.com/auth/spreadsheets"
     ])
     client = gspread.authorize(creds)
-
+    print('Here 2')
     # Open the sheet by its key (the long part after /d/ in the URL)
     sheet = client.open_by_key(spreadsheet_key).sheet1
-
+    print('Here 3')
     # Replace the data with your new DataFrame
     set_with_dataframe(sheet, x)
+    print('Here 4')
 
 
 # -----------------------------#
@@ -222,7 +224,7 @@ st.markdown(
 new_file = st.file_uploader("Upload a csv")
 today = datetime.now()
 
-coating_date = coatings[-1]
+coating_date = coatings[0]
 
 col1, col2, col3, col4,col5 = st.columns(5)
 with col1:
