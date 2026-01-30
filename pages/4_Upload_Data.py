@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import numpy as np
 import pandas as pd
@@ -26,8 +27,8 @@ def load_mayall_data() -> pd.DataFrame:
     url=f'https://docs.google.com/spreadsheet/ccc?key={spreadsheet_key}&output=csv'
     df = pd.read_csv(url,skiprows=[1,2])
     wavelengths = df.columns[9:]
-    df.index = pd.to_datetime(df["Date"])
-    df.drop(columns="Date", inplace=True)
+    df["Date"] = pd.to_datetime(df["Date"]).dt.strftime('%Y-%m-%d')
+    #df.drop(columns="Date", inplace=True)
     headers = pd.read_csv(url,nrows=2)
     return wavelengths, df, headers
 
@@ -81,6 +82,7 @@ def load_data(csv_file, date,telescope,mirror,zone,coating_date,wash_type,cals,m
     for col in new_df.columns[0:31]:
         new_df.rename(columns={col:col.strip('nm')},inplace=True)
     new_df['Date'] = date
+    new_df['Date'] = pd.to_datetime(new_df["Date"]).dt.strftime('%Y-%m-%d')
     new_df['Telescope'] = telescope
     new_df['Mirror'] = mirror
     new_df['Zone'] = zone
@@ -127,10 +129,10 @@ def load_data(csv_file, date,telescope,mirror,zone,coating_date,wash_type,cals,m
                 final_bw = meas*2+4
         if aw:
             if aw_cals:
-                aw_cals_idx = [0+final_bw,cals*2+final_bw-1]
-                aw_empty_idx = [cals*2+final_bw, cals*2+4+final_bw-1]
-                aw_meas_idx = [cals*2+4+final_bw, cals*2+4+meas*2+final_bw-1]
-                aw_empty_2_idx = [cals*2+4+meas*2+final_bw, cals*2+4+meas*2+4+final_bw-1]
+                aw_cals_idx = [0+final_bw,cals*2+final_bw]
+                aw_empty_idx = [cals*2+final_bw, cals*2+4+final_bw]
+                aw_meas_idx = [cals*2+4+final_bw, cals*2+4+meas*2+final_bw]
+                aw_empty_2_idx = [cals*2+4+meas*2+final_bw, cals*2+4+meas*2+4+final_bw]
             else:
                 aw_cals_idx = [np.nan, np.nan]
                 aw_empty_idx = [np.nan, np.nan]
@@ -165,7 +167,8 @@ def load_data(csv_file, date,telescope,mirror,zone,coating_date,wash_type,cals,m
             new_df['Type'] = np.hstack(types)
             new_df['BW/AW'] = np.hstack(labels)
         else:
-            print("Problem")
+            print(f"len of df ({len(new_df)} not the same as labels ({len(types)}))")
+            print(np.stack(types))
     new_df = new_df[new_df['Type'] != "empty"]
     if not aw_cals:
         bw_cal_df = new_df[(new_df['Type'] == 'calibration')&(new_df['BW/AW'] == 'BW')]
@@ -177,15 +180,18 @@ def load_data(csv_file, date,telescope,mirror,zone,coating_date,wash_type,cals,m
        '480', '490', '500', '510', '520', '530', '540', '550', '560', '570',
        '580', '590', '600', '610', '620', '630', '640', '650', '660', '670',
        '680', '690', '700']]
+
+    # new_df.index = pd.to_datetime(new_df["Date"]).dt.strftime('%Y-%m-%d')
+    # new_df.drop(columns="Date", inplace=True)
     
     return new_df
 
-def append_data(df):
-    os.write('HERE')
+def append_data(new_df):
+    print(type(mayall_data.index))
+    print(type(new_df.index))
     x = pd.concat([headers,mayall_data, new_df])
-    x['Date'] = pd.to_datetime(x.index).strftime('%Y-%m-%d')
     x = x.reset_index(drop=True)
-    os.write(x)
+    print(x)
     # Authenticate (you’ll need a service account JSON key)
     creds = Credentials.from_service_account_file("service_account.json", scopes=[
         "https://www.googleapis.com/auth/spreadsheets"
@@ -215,6 +221,19 @@ st.markdown(
 
     Otherwise, you will have to identify if there is a Before and After wash measurement. It will assume the same number of measurements and calibrations for both.
     If there are only one set of calibrations, it will copy this for both the Before and After Wash.
+
+    Expected Format:
+    CSV with the following (this is for BW/AW with Cals for both)
+    * Header
+    * 2 rows of empty
+    * 2 x 'Number of Cals' rows for Before Wash 
+    * 4 rows of empty
+    * 2 x 'Number of Measurements' rows for Before Wash
+    * 4 rows of empty
+    * 2 x 'Number of Cals' rows for After Wash
+    * 4 rows of empty
+    * 2 x 'Number of Measurements' rows for Before Wash
+    * 4 rows of empty
     
     """
 )
@@ -256,11 +275,20 @@ if wash_type != "None":
         aw_cals = st.checkbox("AW cals",value=1)
     st.divider()
 
+if "new_df" not in st.session_state:
+    st.session_state.new_df = None
+
 if st.button("Load Data"):
-    new_df = load_data(new_file, new_date, telescope,mirror,zone,coating_date,wash_type,n_cals,n_meas,bw,bw_cals, aw,aw_cals
+    st.session_state.new_df = load_data(
+        new_file, new_date, telescope, mirror, zone,
+        coating_date, wash_type, n_cals, n_meas,
+        bw, bw_cals, aw, aw_cals
     )
-    st.divider()
-    st.dataframe(new_df)
+
+if st.session_state.new_df is not None:
+    st.dataframe(st.session_state.new_df)
 
     if st.button("Add Data to Master"):
-        append_data(new_df)
+        append_data(st.session_state.new_df)
+        st.success("Data appended to master")
+
